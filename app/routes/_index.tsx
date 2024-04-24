@@ -1,41 +1,48 @@
-import type { MetaFunction } from "@remix-run/node";
+import { defer } from "@remix-run/node";
+import {
+  Await,
+  useAsyncError,
+  useAsyncValue,
+  useLoaderData,
+} from "@remix-run/react";
+import { Suspense } from "react";
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
-  ];
-};
+export function loader() {
+  const rejectingPromise = new Promise<void>((_, reject) => reject(null));
+
+  return defer({ rejectingPromise });
+}
+
+export function ErrorBoundary() {
+  return <h1>I am a server error</h1>;
+}
 
 export default function Index() {
+  const { rejectingPromise } = useLoaderData<typeof loader>();
+
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
-      <h1>Welcome to Remix</h1>
-      <ul>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/blog"
-            rel="noreferrer"
-          >
-            15m Quickstart Blog Tutorial
-          </a>
-        </li>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/jokes"
-            rel="noreferrer"
-          >
-            Deep Dive Jokes App Tutorial
-          </a>
-        </li>
-        <li>
-          <a target="_blank" href="https://remix.run/docs" rel="noreferrer">
-            Remix Docs
-          </a>
-        </li>
-      </ul>
-    </div>
+    <Suspense fallback={<SkeletonComponent />}>
+      <Await resolve={rejectingPromise} errorElement={<RejectedComponent />}>
+        <ResolvedComponent />
+      </Await>
+    </Suspense>
   );
+}
+
+function ResolvedComponent() {
+  const data = useAsyncValue();
+  console.log(data);
+
+  return <h1>I will never render...</h1>;
+}
+
+function RejectedComponent() {
+  const error = useAsyncError();
+  console.log(error);
+
+  return <h1>I will always render!</h1>;
+}
+
+function SkeletonComponent() {
+  return <span>loading...</span>;
 }
